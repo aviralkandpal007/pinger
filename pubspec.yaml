@@ -8,6 +8,16 @@ environment:
   sdk: ^3.9.2
   flutter: ">=1.17.0"
 
+topics:
+  - state-management
+  - lightweight
+  - fast
+  - disposable
+  - performance
+  - handling
+  - pinger
+  - builder
+
 dependencies:
   flutter:
     sdk: flutter
