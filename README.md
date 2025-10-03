@@ -1,39 +1,36 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+## Pinger
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+# Pinger<T> is a lightweight state management utility for Flutter, designed to broadcast data updates across your app. It allows both widgets and non-widget classes to listen to data changes without depending on heavy state management solutions.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+# Think of it as a simple pub-sub (publish/subscribe) system that integrates smoothly into your Flutter project.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## ✨ Features
 
-## Features
+# 🔄 Subscribe to real-time data updates from anywhere (widgets or services).
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+# 📡 Broadcast (ping) new values to all active listeners.
 
-## Getting started
+# 🧹 Simple subscription and unsubscription management.
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+# 🚀 Minimal, fast, and boilerplate-free.
 
-## Usage
+# ❌ Disposables support (stop receiving updates once disposed).
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+## 🚀 Usage
+# 1. Create a Pinger
+#    final Pinger<int> counterPinger = Pinger<int>();
 
-```dart
-const like = 'sample';
-```
+# 2. Subscribe to updates
+#    counterPinger.subscribe((value) {
+#    print("Counter updated: $value");
+#    });
 
-## Additional information
+# 3. Send updates (ping values)
+#    counterPinger.ping(1); // Prints: Counter updated: 1
+#    counterPinger.ping(2); // Prints: Counter updated: 2
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+# 4. Unsubscribe when not needed
+#    counterPinger.unsubscribe(listener);
+
+# 5. Dispose when finished
+#    counterPinger.dispose();
