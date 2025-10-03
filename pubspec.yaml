@@ -14,9 +14,6 @@ topics:
   - fast
   - disposable
   - performance
-  - handling
-  - pinger
-  - builder
 
 dependencies:
   flutter:
