@@ -1,6 +1,6 @@
 name: pinger
 description: "Pinger is a highly optimised and fast flutter notifier. It helps to achieve a easier state management"
-version: 0.0.1
+version: 0.0.2
 repository: https://github.com/aviralkandpal007/pinger.git
 homepage:
 
