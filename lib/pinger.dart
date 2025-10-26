@@ -76,7 +76,7 @@ class Pinger<T> {
   /// subscription at once and will disable the notifier functionality
   /// after disposing the [Pinger] any ping to the [data] will not update
   /// any widgets or any subscription
-  void dispose(PingerCallback<T> listener) {
+  void dispose() {
     _disposed = true;
     _pingerSubscriptions.clear();
   }
