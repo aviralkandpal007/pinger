@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pinger/builders.dart';
-import 'package:pinger/pinger.dart';
-import 'package:pinger/pingora.dart';
+import 'package:pinger_example/pingora_example/pingora_selector_example.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,62 +15,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: CounterClass(),
+      home: MyHomePage(title: "Pinger Example"),
     );
   }
 }
 
-class CounterViewmodel extends Pingora {
-  int count = 0;
-
-  increaseCounter() {
-    count++;
-    debugPrint('Count Increased $count');
-    ping();
-  }
-}
-
-class CounterClass extends StatelessWidget {
-  const CounterClass({super.key});
-
-  static final CounterViewmodel counterViewmodel = CounterViewmodel();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text('Pingora Counter'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            PingSelector<CounterViewmodel, int>(
-              listenable: (_) => counterViewmodel,
-              selector: (pingora) => pingora.count,
-              builder: (context, value) {
-                return Text(
-                  '$value',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          counterViewmodel.increaseCounter();
-        },
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-
+/// Main home page class
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -83,26 +31,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  // counter
-  final Pinger<int> _counterPinger = Pinger();
-  //
-  int _count = 0;
-
-  // this is for listening to the data of the notifier without any value
-  void _listenToData(int? value) {
-    debugPrint('Notifier Updates $value');
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _counterPinger.subscribe(_listenToData);
-  }
-
-  void _notifyCounter() {
-    _count++;
-    _counterPinger.ping(_count);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,35 +39,24 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            PingBuilder<int>(
-              initialData: _count,
-              pinger: _counterPinger,
-              builder: (context, value) {
-                return Text(
-                  '$value',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _notifyCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      body: Row(
+        children: [
+          PingoraSelectorExample(),
+          PingBuilderExample(),
+        ],
       ),
     );
   }
+}
+
+
+
+/// Ping Builder Example
+class PingBuilderExample extends StatelessWidget {
+  const PingBuilderExample({super.key});
 
   @override
-  void dispose() {
-    _counterPinger.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return const Placeholder();
   }
 }

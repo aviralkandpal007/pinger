@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:pinger/pinger.dart';
-import 'package:pinger/pingora.dart';
 
 /// The [Builder] works on the UI updates parts to fetch and update the UI
 /// directly via the [Pinger] this will help update a clean maintainable
 /// state for the Builders and will achieve a greater performance.
 part 'widgets/ping_builder.dart';
-part 'widgets/ping_selector.dart';
 
 /// The [PingBuilder] will fetch the data state from the [Pinger] and
 /// with the help of these notifiers this will update the result in UI
