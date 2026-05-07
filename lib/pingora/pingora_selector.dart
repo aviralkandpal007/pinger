@@ -42,8 +42,10 @@ class PingoraSelector<T extends Pingora, S> extends StatefulWidget {
 class _PingoraSelectorState<T extends Pingora, S>
     extends State<PingoraSelector<T, S>> {
   /// Stores the current instance of the [Pingora] controller that this
-  /// selector is listening to. This is initialized once during [initState]
-  /// and remains active until the widget is disposed from the tree.
+  /// selector is listening to. Initialised in [didChangeDependencies]
+  /// rather than [initState] because [widget.listenable] typically calls
+  /// `dependOnInheritedWidgetOfExactType`, which is only valid after the
+  /// widget has been fully mounted into the element tree.
   late T _pingora;
 
   /// Holds the currently selected value extracted from the controller
@@ -51,13 +53,15 @@ class _PingoraSelectorState<T extends Pingora, S>
   /// to determine whether the UI should rebuild or remain unchanged.
   late S _value;
 
+  /// Tracks whether the initial subscription has been set up so that
+  /// [didChangeDependencies] only performs it once.
+  bool _initialized = false;
+
   /// Listener callback that gets triggered whenever the [Pingora] controller
   /// emits a new update. It recalculates the selected value and compares it
   /// with the previous value to decide whether a UI rebuild is required.
   void _listener() {
     final newValue = widget.selector(_pingora);
-
-    debugPrint('PingoraSelector New Value: $newValue');
 
     /// Only rebuilds the widget if the selected value has changed. This
     /// prevents unnecessary UI updates and ensures efficient rendering
@@ -71,19 +75,48 @@ class _PingoraSelectorState<T extends Pingora, S>
   void initState() {
     super.initState();
 
-    /// Retrieves the controller instance using the provided listenable
-    /// function. This allows the selector to bind itself to the correct
-    /// scoped or injected [Pingora] instance in the widget hierarchy.
-    _pingora = widget.listenable(context);
+    /// Intentionally empty — the inherited-widget lookup in
+    /// [widget.listenable] must not run until the widget tree is
+    /// fully mounted. See [didChangeDependencies].
+  }
 
-    /// Initializes the selected value immediately so the UI has an
-    /// initial valid state before any updates or subscriptions occur.
-    _value = widget.selector(_pingora);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    /// Subscribes to the Pingora updates so this widget can reactively
-    /// respond to state changes and rebuild only when necessary changes
-    /// are detected through the selector logic.
-    _pingora.subscribe(_listener);
+    if (!_initialized) {
+      _initialized = true;
+
+      /// Retrieves the controller instance using the provided listenable
+      /// function. Safe now because the widget is fully mounted and
+      /// inherited-widget dependencies can be resolved.
+      _pingora = widget.listenable(context);
+
+      /// Initializes the selected value immediately so the UI has an
+      /// initial valid state before any updates or subscriptions occur.
+      _value = widget.selector(_pingora);
+
+      /// Subscribes to the Pingora updates so this widget can reactively
+      /// respond to state changes and rebuild only when necessary changes
+      /// are detected through the selector logic.
+      _pingora.subscribe(_listener);
+    }
+  }
+
+  @override
+  void didUpdateWidget(PingoraSelector<T, S> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    /// If the [listenable] function produces a different Pingora instance
+    /// (e.g. because the widget was rebuilt with different parameters),
+    /// unsubscribe from the old one and subscribe to the new one.
+    final newPingora = widget.listenable(context);
+    if (newPingora != _pingora) {
+      _pingora.unsubscribe(_listener);
+      _pingora = newPingora;
+      _value = widget.selector(_pingora);
+      _pingora.subscribe(_listener);
+    }
   }
 
   @override
@@ -91,8 +124,9 @@ class _PingoraSelectorState<T extends Pingora, S>
     /// Removes the listener from the [Pingora] controller to prevent
     /// memory leaks, dangling callbacks, or unwanted updates after
     /// the widget has been removed from the widget tree permanently.
-    _pingora.unsubscribe(_listener);
-
+    if (_initialized) {
+      _pingora.unsubscribe(_listener);
+    }
     super.dispose();
   }
 

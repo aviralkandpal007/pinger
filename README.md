@@ -4,53 +4,24 @@
 [![Flutter](https://img.shields.io/badge/Flutter-%3E%3D1.17.0-blue)](https://flutter.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Pinger** is a lightweight, high-performance state management toolkit for Flutter. It provides three complementary state communication patterns — **Pinger**, **Pingora**, and **Channeler** — that work together to handle everything from simple widget-to-widget updates to cross-application event broadcasting.
+**Pinger** is a lightweight state management toolkit for Flutter with three complementary patterns:
 
-> **Think of Pinger as a toolbox for state reactivity.**  
-> Each tool has a specific job. Pick the right one for the task.
+| Pattern | What it does |
+|---------|-------------|
+| **Pinger** — simple pub/sub | One source broadcasts typed data to many listeners |
+| **Pingora** — ViewModel pattern | Scoped controller with auto-cleanup + fine-grained UI rebuilds |
+| **Channeler** — global event bus | Decoupled cross-app communication via typed channels |
 
----
-
-## 📋 Table of Contents
-
-- [Why Pinger?](#-why-pinger)
-- [Installation](#-installation)
-- [The Three Flows](#-the-three-flows)
-  - [Flow 1: Pinger — Simple Pub/Sub](#-flow-1-pinger--simple-pubsub)
-  - [Flow 2: Pingora — ViewModel / Controller Pattern](#-flow-2-pingora--viewmodel--controller-pattern)
-  - [Flow 3: Channeler — Global Event Bus](#-flow-3-channeler--global-event-bus)
-- [Which Flow Should I Use?](#-which-flow-should-i-use)
-- [API Reference](#-api-reference)
-- [Performance Considerations](#-performance-considerations)
-- [Examples](#-examples)
-- [License](#-license)
-
----
-
-## 🎯 Why Pinger?
-
-| Concern | Typical Solution | Pinger Approach |
-|---------|-----------------|-----------------|
-| Sharing state between widgets | Provider, Riverpod, BLoC | `Pinger<T>` + `PingBuilder<T>` |
-| ViewModel / Controller lifecycle | GetX, MobX | `Pingora` + `PingoraScope` |
-| Cross-app event broadcasting | EventBus, signals | `Channeler` + `Channel<T>` |
-| Bundle size / complexity | Large frameworks | **Minimal** — ~400 lines total |
-
-**Pinger is NOT a replacement for Provider or BLoC on large apps.**  
-It IS a fast, minimal alternative when you need reactivity without ceremony.
+Each pattern is independent. Use one or all three — they are designed to work together.
 
 ---
 
 ## 📦 Installation
 
-Add to your `pubspec.yaml`:
-
 ```yaml
 dependencies:
-  pinger: ^0.0.3
+  pinger: ^0.0.4
 ```
-
-Then run:
 
 ```sh
 flutter pub get
@@ -58,120 +29,117 @@ flutter pub get
 
 ---
 
-## 🔧 The Three Flows
+## 📡 Flow 1: Pinger + PingBuilder
 
----
+**Pinger** is a generic pub/sub class. You `subscribe` to receive updates, `ping` to broadcast new data, `unsubscribe` to stop listening, and `dispose` to shut it down permanently.
 
-### 📡 Flow 1: Pinger — Simple Pub/Sub
+**PingBuilder** is a widget that wraps a `Pinger` and handles the `subscribe`/`unsubscribe` lifecycle automatically.
 
-**Purpose:** Broadcast data from one source to multiple listeners (widgets, services, etc.).
-
-**Best for:**
-- Sharing a single value across multiple widgets
-- Updating UI from background services / repositories
-- Simple counter, toggle, or text field state
-
-#### How it works
-
-```
-┌─────────────┐     ping(42)     ┌──────────────────┐
-│  Any Sender  │ ───────────────► │   Pinger<int>    │
-└─────────────┘                   │  (radio station) │
-                                  └────────┬─────────┘
-                                           │
-                          ┌────────────────┼────────────────┐
-                          ▼                ▼                ▼
-                     ┌──────────┐   ┌──────────┐   ┌──────────┐
-                     │ Widget A │   │ Widget B │   │ Service  │
-                     │(subscribe)│  │(subscribe)│  │(subscribe)│
-                     └──────────┘   └──────────┘   └──────────┘
-```
-
-#### Basic usage
+### Basic Pinger API
 
 ```dart
 import 'package:pinger/pinger.dart';
 
-// 1. Create a pinger (generic over any type)
 final Pinger<int> counter = Pinger<int>();
 
-// 2. Subscribe to updates
 void listener(int? value) => print('Got: $value');
-counter.subscribe(listener);
 
-// 3. Ping new data — all subscribers are notified
-counter.ping(1); // prints: Got: 1
-counter.ping(2); // prints: Got: 2
-
-// 4. Unsubscribe when done (critical for memory safety!)
-counter.unsubscribe(listener);
-
-// 5. Dispose when the pinger is no longer needed
-counter.dispose();
+counter.subscribe(listener);   // start listening
+counter.ping(1);                // prints: Got: 1
+counter.ping(2);                // prints: Got: 2
+counter.unsubscribe(listener);  // stop listening
+counter.dispose();              // permanently shut down
 ```
 
-#### Using PingBuilder (no manual lifecycle)
+`Pinger` works in **any Dart class** — widgets, services, repositories, BLoCs:
 
 ```dart
-import 'package:pinger/pinger.dart';
-import 'package:pinger/builders.dart';
-
-final Pinger<String> messagePinger = Pinger<String>();
-
-// PingBuilder auto-subscribes and auto-unsubscribes — no StatefulWidget needed!
-PingBuilder<String>(
-  pinger: messagePinger,
-  initialData: 'Waiting...',               // shown until first ping
-  builder: (context, value) {
-    return Text(value ?? 'No data');
-  },
-);
-
-// Later, anywhere in your app:
-messagePinger.ping('Hello from service!');  // UI updates automatically
+class LoggerService {
+  void start() => counterPinger.subscribe(_log);
+  void _log(int? v) => print(v);
+  void stop()  => counterPinger.unsubscribe(_log);
+}
 ```
 
-> **💡 Key point:** `Pinger` works in **any Dart class** — not just widgets.  
-> Services, repositories, BLoCs, and plain Dart objects can all subscribe.
-
-#### `forcePing` — when you need to notify even if the value hasn't changed
+`forcePing` sends the update even when the value hasn't changed:
 
 ```dart
 counterPinger.ping(42, forcePing: true);
 ```
 
+### PingBuilder — automatic lifecycle
+
+```dart
+import 'package:pinger/builders.dart';
+
+PingBuilder<int>(
+  pinger: counterPinger,
+  initialData: 0,
+  builder: (context, value) => Text('$value'),
+);
+```
+
+`PingBuilder` subscribes in `initState` and unsubscribes in `dispose` automatically. No manual lifecycle management needed.
+
+### Putting it together
+
+```dart
+final Pinger<int> counterPinger = Pinger<int>();
+
+class MyScreen extends StatefulWidget {
+  @override
+  State<MyScreen> createState() => _MyScreenState();
+}
+
+class _MyScreenState extends State<MyScreen> {
+  int _value = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    counterPinger.subscribe(_onData);     // manual subscribe
+  }
+
+  void _onData(int? v) {
+    if (v != null && mounted) setState(() => _value = v);
+  }
+
+  @override
+  void dispose() {
+    counterPinger.unsubscribe(_onData);   // manual unsubscribe
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Text('$_value'),                              // manual display
+      PingBuilder<int>(                             // auto display
+        pinger: counterPinger,
+        builder: (ctx, v) => Text('$v'),
+      ),
+      ElevatedButton(
+        onPressed: () => counterPinger.ping(_value + 1),
+        child: const Text('+1'),
+      ),
+    ]);
+  }
+}
+```
+
 ---
 
-### 🧠 Flow 2: Pingora — ViewModel / Controller Pattern
+## 🧠 Flow 2: Pingora + PingoraScope + PingoraSelector
 
-**Purpose:** Encapsulate business logic + state into a disposable controller, then selectively rebuild parts of the UI that depend on specific state slices.
+**Pingora** is the base class for ViewModels / Controllers. Extend it, add your own state and methods, and call `ping()` to notify listeners.
 
-**Best for:**
-- Screen-level ViewModels / Controllers
-- Forms with multiple fields
-- Complex pages where you want fine-grained rebuild control
+**PingoraScope** wraps a widget subtree — it creates the Pingora once and disposes it when the subtree is removed.
 
-#### How it works
+**PingoraSelector** subscribes to a Pingora and rebuilds only when a **selected portion** of the state changes.
 
-```
-┌──────────────────────────────────────────────────┐
-│                  PingoraScope                     │
-│  ┌────────────────────────────────────────────┐  │
-│  │             PingoraModel (extends Pingora)  │  │
-│  │  ┌─────────┐  ┌─────────┐  ┌───────────┐  │  │
-│  │  │ count   │  │ loading │  │ userName  │  │  │
-│  │  └─────────┘  └─────────┘  └───────────┘  │  │
-│  └────────────────────────────────────────────┘  │
-│         │           │                             │
-│         ▼           ▼                             │
-│  ┌──────────┐ ┌──────────┐                        │
-│  │Selector A│ │Selector B│  (rebuild only when    │
-│  │ (count)  │ │(userName)│   the selected value   │
-│  └──────────┘ └──────────┘   changes!)            │
-└──────────────────────────────────────────────────┘
-```
+`context.pingora<T>()` retrieves the scoped Pingora from the nearest `PingoraScope` ancestor.
 
-#### Step 1: Create a Pingora model
+### Step 1: Create a Pingora model
 
 ```dart
 import 'package:pinger/pingora.dart';
@@ -181,168 +149,158 @@ class CounterModel extends Pingora {
 
   void increment() {
     count++;
-    ping(); // ⚡ notify all subscribed listeners
-  }
-
-  void reset() {
-    count = 0;
-    ping();
+    ping(); // notify all subscribers
   }
 }
 ```
 
-#### Step 2: Scope the model lifecycle with PingoraScope
+### Step 2: Scope with PingoraScope + listen with PingoraSelector
 
 ```dart
-import 'package:pinger/pingora/pingora_scope.dart';
-import 'package:pinger/pingora/pingora_selector.dart';
+import 'package:pinger/pingora.dart';
 
 PingoraScope<CounterModel>(
-  create: () => CounterModel(),    // called once on init
-  child: Column(
-    children: [
-      // Only rebuilds when `count` changes!
-      PingoraSelector<CounterModel, int>(
-        listenable: (ctx) => /* get your model */,
-        selector: (model) => model.count,
-        builder: (ctx, count) => Text('$count'),
-      ),
-      ElevatedButton(
-        onPressed: () => /* model.increment() */,
-        child: const Text('Increment'),
-      ),
-    ],
-  ),
+  create: () => CounterModel(),   // called once, disposed when removed
+  child: Column(children: [
+    PingoraSelector<CounterModel, int>(
+      listenable: (ctx) => ctx.pingora<CounterModel>(),
+      selector: (m) => m.count,                    // only this value is watched
+      builder: (ctx, count) => Text('$count'),      // rebuilds only when count changes
+    ),
+    ElevatedButton(
+      onPressed: () => context.pingora<CounterModel>().increment(),
+      child: const Text('+1'),
+    ),
+  ]),
 );
-// CounterModel.dispose() is called automatically when PingoraScope leaves the tree
 ```
 
-> **💡 Why PingoraSelector?**  
-> With `setState`, the entire widget rebuilds. With `PingoraSelector`, only the
-> widget that depends on `count` rebuilds. This gives you **opt-in granularity**
-> without manually managing `StreamSubscription` or `ChangeNotifier` lists.
+### context.pingora<T>() in detail
+
+The extension on `BuildContext` finds the nearest `PingoraScope<T>` ancestor and returns its Pingora instance. Use it to `subscribe`, `unsubscribe`, or call any method on the model:
+
+```dart
+import 'package:pinger/pingora.dart';
+
+class MyWidget extends StatefulWidget {
+  @override
+  State<MyWidget> createState() => _MyWidgetState();
+}
+
+class _MyWidgetState extends State<MyWidget> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Safe to call context.pingora<T>() after the first build
+    context.pingora<CounterModel>().subscribe(_onUpdate);
+  }
+
+  void _onUpdate() {
+    if (mounted) setState(() { /* re-read model state */ });
+  }
+
+  @override
+  void dispose() {
+    // Must unsubscribe to prevent leaks
+    try { context.pingora<CounterModel>().unsubscribe(_onUpdate); } catch (_) {}
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text('${context.pingora<CounterModel>().count}');
+  }
+}
+```
+
+### Pingora API
+
+| Method | Behaviour |
+|--------|-----------|
+| `subscribe(VoidCallback)` | Register a listener. Throws if already disposed. |
+| `ping()` | Call all subscribed listeners. Throws if disposed. |
+| `unsubscribe(VoidCallback)` | Remove a listener. Throws if disposed or listener never subscribed. |
+| `dispose()` | Clear listeners and permanently disable. Further calls to subscribe/ping/unsubscribe throw. |
 
 ---
 
-### 🌐 Flow 3: Channeler — Global Event Bus
+## 🌐 Flow 3: Channeler — Global Event Bus
 
-**Purpose:** Send events between completely decoupled parts of your app without direct references.
+**Channeler** is a singleton event bus. Define typed `Channel` constants, `initialize` them, then `subscribe`/`ping`/`unsubscribe` from anywhere — no direct references between sender and receiver.
 
-**Best for:**
-- Cross-screen communication (e.g., "user logged in", "settings changed")
-- Global theming / locale changes
-- Showing snackbars or dialogs from anywhere
-- Feature-to-feature communication without imports
-
-#### How it works
-
-```
-┌──────────┐  ping("theme")   ┌──────────────────┐  subscribe   ┌──────────┐
-│Screen A   │ ───────────────► │    Channeler     │ ◄────────── │Screen B  │
-│(settings) │                  │   (event bus)    │             │(listener)│
-└──────────┘                   │                  │             └──────────┘
-                               │  ┌────────────┐  │
-┌──────────┐  ping("logout")   │  │ theme_chan │  │ subscribe   ┌──────────┐
-│Auth Service│ ──────────────► │  │ notif_chan │  │ ◄────────── │Any Widget│
-└──────────┘                   │  │ counter_chn│  │             └──────────┘
-                               │  └────────────┘  │
-┌──────────┐  ping("notify")   └──────────────────┘ subscribe   ┌──────────┐
-│Repository│ ───────────────►                   ◄────────────── │Snackbar  │
-└──────────┘                                                        UI     │
-                                                                    └──────────┘
-```
-
-#### Step 1: Define your channels
+### Define channels
 
 ```dart
 import 'package:pinger/channeler/channeler.dart';
 
-class AppChannels {
-  static const themeChanged = Channel<String>('theme_changed');
-  static const showSnackbar = Channel<String>('show_snackbar');
-  static const userLoggedIn = Channel<String>('user_logged_in');
-  static const counter = Channel<int>('counter');
+class MyChannels {
+  static const snackbar = Channel<String>('snackbar');
+  static const counter  = Channel<int>('counter');
 }
 ```
 
-#### Step 2: Initialize and subscribe
+### Initialize and subscribe
 
 ```dart
-final Channeler bus = Channeler(); // singleton — always returns the same instance
+final Channeler bus = Channeler();      // singleton
 
-// Initialize channels (required before use)
-bus.initialize(AppChannels.showSnackbar);
-bus.initialize(AppChannels.counter);
+bus.initialize(MyChannels.snackbar);
+bus.initialize(MyChannels.counter);
 
-// Subscribe
-void onSnackbar(String? msg) {
-  if (msg != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-}
-bus.subscribe(AppChannels.showSnackbar, onSnackbar);
+bus.subscribe(MyChannels.snackbar, (msg) {
+  if (msg != null) showSnackBar(msg);
+});
 
-void onCounter(int? value) {
-  debugPrint('Counter updated: $value');
-}
-bus.subscribe(AppChannels.counter, onCounter);
+bus.subscribe(MyChannels.counter, (v) {
+  debugPrint('counter: $v');
+});
 ```
 
-#### Step 3: Ping from anywhere
+### Ping from anywhere
 
 ```dart
-// In a repository, service, or any widget:
-Channeler().ping(AppChannels.showSnackbar, 'Data saved!');
-Channeler().ping(AppChannels.counter, 42);
+Channeler().ping(MyChannels.snackbar, 'Hello!');
+Channeler().ping(MyChannels.counter, 42);
 ```
 
-#### Step 4: Clean up
+### Clean up
 
 ```dart
-bus.unsubscribe(AppChannels.showSnackbar, onSnackbar);
-bus.disposeChannel(AppChannels.counter); // removes channel + all listeners
+bus.unsubscribe(MyChannels.snackbar, listener);
+bus.disposeChannel(MyChannels.counter);   // removes channel + all listeners
 ```
 
-#### Using the BuildContext Extension
+### BuildContext extension
 
 ```dart
 import 'package:pinger/channeler_extension.dart';
 
-// Inside any widget build method:
-context.initChannel(AppChannels.themeChanged);
-context.subscribeChannel(AppChannels.themeChanged, (theme) { /* ... */ });
-context.pingChannel(AppChannels.themeChanged, 'dark');
-context.unsubscribeChannel(AppChannels.themeChanged, listener);
-context.disposeChannel(AppChannels.themeChanged);
+context.initChannel(MyChannels.snackbar);
+context.subscribeChannel(MyChannels.snackbar, (msg) { });
+context.pingChannel(MyChannels.snackbar, 'Hi');
+context.unsubscribeChannel(MyChannels.snackbar, listener);
+context.disposeChannel(MyChannels.snackbar);
 ```
-
-> **💡 Key point:** The sender and receiver never import each other.  
-> They only share the `Channel` constant. This eliminates circular dependencies
-> and keeps your architecture clean.
 
 ---
 
-## 🤔 Which Flow Should I Use?
+## 🤔 Which flow should I use?
 
-| Scenario | Use This |
-|----------|----------|
+| Situation | Use |
+|-----------|-----|
 | A single value needs to update multiple widgets | **Pinger** + **PingBuilder** |
-| A service needs to push data into the UI | **Pinger** (subscribe in service) |
+| A service/repository needs to push data into the UI | **Pinger** |
 | A screen has complex state (form, multiple fields) | **Pingora** + **PingoraScope** + **PingoraSelector** |
-| You need fine-grained rebuild control for performance | **PingoraSelector** |
-| Two unrelated widgets / features need to talk | **Channeler** |
+| Two unrelated features need to communicate | **Channeler** |
 | You want to show a snackbar from a repository | **Channeler** |
-| You're already using Provider/BLOC but need a lightweight event bus | **Channeler** |
+| You need fine-grained rebuild control for performance | **PingoraSelector** |
 
-You can **mix all three** in the same app — they are designed to complement each other:
+All three can be mixed freely in the same app:
 
 ```dart
-// Channeler for cross-cutting events
-Channeler().ping(AppChannels.userLoggedIn, 'user_123');
-
-// Pinger for localized state
-shoppingCartPinger.ping(cartItems);
-
-// Pingora for screen-level ViewModel
-PingoraScope<CheckoutModel>(
+Channeler().ping(MyChannels.userLoggedIn, 'alice');   // cross-cutting event
+cartPinger.ping(cartItems);                            // localized state
+PingoraScope<CheckoutModel>(                           // screen ViewModel
   create: () => CheckoutModel(),
   child: CheckoutScreen(),
 );
@@ -352,107 +310,100 @@ PingoraScope<CheckoutModel>(
 
 ## 📖 API Reference
 
-### `Pinger<T>` (package:pinger/pinger.dart)
+### `Pinger<T>` — `package:pinger/pinger.dart`
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `subscribe` | `void Function(PingerCallback<T?> listener)` | Register a listener for updates |
-| `ping` | `void Function(T? data, {bool forcePing = false})` | Broadcast data to all listeners. Skips if data unchanged unless `forcePing: true` |
-| `unsubscribe` | `void Function(PingerCallback<T?> listener)` | Remove a specific listener. Throws if listener was never subscribed |
-| `dispose` | `void Function()` | Clear all listeners and disable the pinger permanently |
-| `data` | `T? get` | Read the current held value without subscribing |
+| Member | Description |
+|--------|-------------|
+| `subscribe(PingerCallback<T?>)` | Register a listener. Throws if disposed. |
+| `ping(T? data, {bool forcePing})` | Broadcast to all listeners. Skips if data unchanged unless `forcePing: true`. Throws if disposed. |
+| `unsubscribe(PingerCallback<T?>)` | Remove a listener. Throws if disposed or listener never subscribed. |
+| `dispose()` | Clear listeners and permanently disable. |
+| `T? get data` | Current held value. |
 
-### `PingBuilder<T>` (package:pinger/builders.dart)
+### `PingBuilder<T>` — `package:pinger/builders.dart`
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `pinger` | `Pinger<T>` | The pinger to subscribe to |
-| `builder` | `Widget Function(BuildContext, T?)` | UI builder receiving the latest value |
-| `initialData` | `T?` | Default value shown before the first ping |
+| Param | Type | Description |
+|-------|------|-------------|
+| `pinger` | `Pinger<T>` | The pinger to subscribe to. |
+| `builder` | `Widget Function(BuildContext, T?)` | UI builder called with each new value. |
+| `initialData` | `T?` | Default value shown before the first ping. |
 
-### `Pingora` (package:pinger/pingora.dart)
+### `Pingora` — `package:pinger/pingora.dart`
 
 | Method | Description |
 |--------|-------------|
-| `subscribe(VoidCallback)` | Register a listener |
-| `unsubscribe(VoidCallback)` | Remove a listener |
-| `ping()` | Notify all listeners |
-| `dispose()` | Clear all listeners and disable |
+| `subscribe(VoidCallback)` | Register a listener. Throws if disposed. |
+| `ping()` | Call all listeners. Throws if disposed. |
+| `unsubscribe(VoidCallback)` | Remove a listener. Throws if disposed or never subscribed. |
+| `dispose()` | Clear listeners and permanently disable. |
 
-### `PingoraScope<T>` (package:pinger/pingora/pingora_scope.dart)
+### `PingoraScope<T>` — `package:pinger/pingora/pingora_scope.dart`
 
-| Parameter | Description |
-|-----------|-------------|
-| `create` | Factory that creates the Pingora instance (called once) |
-| `child` | Widget subtree that can access the Pingora |
+| Param | Description |
+|-------|-------------|
+| `create` | Factory called once to create the Pingora instance. |
+| `child` | Widget subtree that receives the Pingora via `context.pingora<T>()`. |
 
-### `PingoraSelector<T, S>` (package:pinger/pingora/pingora_selector.dart)
+### `PingoraSelector<T, S>` — `package:pinger/pingora/pingora_selector.dart`
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `listenable` | `T Function(BuildContext)` | Function to retrieve the Pingora from context |
-| `selector` | `S Function(T)` | Extract the specific state slice to monitor |
-| `builder` | `Widget Function(BuildContext, S)` | UI builder, called only when the selected value changes |
+| Param | Type | Description |
+|-------|------|-------------|
+| `listenable` | `T Function(BuildContext)` | Retrieves the Pingora from the widget tree. |
+| `selector` | `S Function(T)` | Extracts the state slice to monitor. |
+| `builder` | `Widget Function(BuildContext, S)` | UI builder, called only when the selected value changes. |
 
-### `Channel` (package:pinger/channeler/channeler.dart)
+### `PingoraExtension` — `package:pinger/pingora.dart` (auto-exported)
+
+| Method | Description |
+|--------|-------------|
+| `pingora<T>()` | Returns the nearest `Pingora` of type `T` from an ancestor `PingoraScope`. Throws if not found. Call `.subscribe()`, `.ping()`, `.unsubscribe()`, `.dispose()` on the result. |
+
+### `Channel` — `package:pinger/channeler/channeler.dart`
 
 | Constructor | Description |
 |-------------|-------------|
-| `Channel(String name)` | Create a typed channel with a unique name |
+| `Channel(String name)` | Creates a typed channel with a unique name. |
 
-### `Channeler` (package:pinger/channeler/channeler.dart)
+### `Channeler` — `package:pinger/channeler/channeler.dart`
 
 | Method | Description |
 |--------|-------------|
-| `initialize<T>(Channel<T>)` | Register a channel (must be called before use) |
-| `subscribe<T>(Channel<T>, ChannelerCallback<T>)` | Listen for events on a channel |
-| `ping<T>(Channel<T>, T?)` | Emit data to all subscribers of a channel |
-| `unsubscribe<T>(Channel<T>, ChannelerCallback<T>)` | Remove a listener from a channel |
-| `disposeChannel<T>(Channel<T>)` | Remove the channel and all its listeners |
+| `initialize<T>(Channel<T>)` | Register a channel (required before use). |
+| `subscribe<T>(Channel<T>, ChannelerCallback<T>)` | Listen for events on a channel. |
+| `ping<T>(Channel<T>, T?)` | Emit data to all channel subscribers. |
+| `unsubscribe<T>(Channel<T>, ChannelerCallback<T>)` | Remove a listener from a channel. |
+| `disposeChannel<T>(Channel<T>)` | Remove a channel and all its listeners. |
 
-### `ChannelerExtension` (package:pinger/channeler_extension.dart)
+### `ChannelerExtension` — `package:pinger/channeler_extension.dart`
 
-All `Channeler` methods are available as `BuildContext` extensions:
-`context.channeler`, `context.initChannel()`, `context.subscribeChannel()`,
-`context.pingChannel()`, `context.unsubscribeChannel()`, `context.disposeChannel()`.
+Shorthand methods on `BuildContext`: `context.channeler`, `context.initChannel()`, `context.subscribeChannel()`, `context.pingChannel()`, `context.unsubscribeChannel()`, `context.disposeChannel()`.
 
 ---
 
-## ⚡ Performance Considerations
+## ⚡ Performance notes
 
-1. **PingBuilder vs manual subscribe:** `PingBuilder` is optimized — it unsubscribes automatically when removed from the tree, preventing memory leaks.
-
-2. **PingoraSelector granularity:** By selecting only the state slice you need, you prevent large subtrees from rebuilding. Use this when you have complex screens with many independent state values.
-
-3. **forcePing:** Defaults to `false`. The `ping()` method checks whether the new value differs from the current value before notifying listeners. Set `forcePing: true` only when you need to guarantee a notification (e.g., refresh triggers).
-
-4. **Dispose discipline:** Always call `unsubscribe` or `dispose` when a listener or pinger is no longer needed. Failing to do so causes **dead listeners** that still hold references, preventing garbage collection.
-
-5. **Channeler singleton:** The `Channeler` is a single global instance. Do not create multiple instances — the factory constructor always returns the same singleton.
+- **PingBuilder** unsubscribes automatically when removed from the tree — no leaks.
+- **PingoraSelector** only rebuilds when the selected state slice changes — prevents large subtree rebuilds.
+- **`forcePing: false`** (default) skips notifications when the value hasn't changed.
+- **Always unsubscribe** in `dispose()` — failing to do so causes dead listeners that prevent garbage collection.
+- **Channeler** is a singleton — the factory always returns the same instance.
 
 ---
 
-## 🖥️ Examples
-
-Run the example app to see all three flows in action:
+## 🖥️ Running the examples
 
 ```sh
 cd example
 flutter run
 ```
 
-The example app includes:
-- **Flow 1a:** Manual `Pinger` subscribe/ping/unsubscribe with a logging service
-- **Flow 1b:** `PingBuilder` auto-management (no `StatefulWidget` needed)
-- **Flow 2a:** `PingoraSelector` — optimized rebuilds with selected state
-- **Flow 2b:** `PingoraScope` — auto-created and auto-disposed ViewModel lifecycle
-- **Flow 3:** `Channeler` — decoupled event bus with typed channels
+Three self-contained screens show each flow in action.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT License — see [LICENSE](LICENSE).
 
 ---
 

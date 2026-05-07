@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 /// The [PingerCallback] will be used as a data listening port for the other
 /// non widget parts so that we can also subscribe to the [Pinger] updates in
 /// any method to directly fetch the update as required.
@@ -27,6 +29,13 @@ class Pinger<T> {
   /// updates directly without waiting for any UI/Widgets updates.
   final List<PingerCallback<T>> _pingerSubscriptions = [];
 
+  Pinger() {
+    developer.log(
+      'Pinger<$T> initialized',
+      name: 'pinger',
+    );
+  }
+
   /// The [subscribe] method add the subscription for the current [Pinger]
   /// class when we will subscribe to the current notifier for the updates
   /// if you subscribe to the the notifier it is mandatory to unsubscribe from
@@ -37,9 +46,11 @@ class Pinger<T> {
       !_disposed,
       AssertionError('Can not subscribe to a disposed Pinger'),
     );
-    // this will add the listener to the list of the notifier subscription
-    // which will update all the subscribed notifier
     _pingerSubscriptions.add(listener);
+    developer.log(
+      'Pinger<$T> subscribed (listeners: ${_pingerSubscriptions.length})',
+      name: 'pinger',
+    );
   }
 
   /// The [ping] method checks whether or not the new update contains the
@@ -48,9 +59,11 @@ class Pinger<T> {
   /// if the data is same it can update
   void ping(T? data, {bool forcePing = false}) {
     assert(!_disposed, AssertionError('Can not ping on a disposed Pinger'));
-    // check the force ping value
     if (forcePing || _data != data) {
-      // this will send the data to each of the updates
+      developer.log(
+        'Pinger<$T> pinged value: $data (listeners: ${_pingerSubscriptions.length})',
+        name: 'pinger',
+      );
       for (var e in _pingerSubscriptions) {
         e.call(data);
       }
@@ -61,15 +74,16 @@ class Pinger<T> {
   /// class when we will remove to the current notifier for the updates
   /// this will help to remove the unwanted listeners from [PingerCallback]
   void unsubscribe(PingerCallback<T?> listener) {
-    // check if already disposed if disposed throw the assertion error
     assert(
       !_disposed,
       throw AssertionError('Can not unsubscribe from a disposed Pinger'),
     );
-    // if not remove the topic we want to unsubscribe
     bool removed = _pingerSubscriptions.remove(listener);
-    // if not removed than throw the error that no listener was there
     assert(removed, 'Tried to dispose a listener that was not subscribed');
+    developer.log(
+      'Pinger<$T> unsubscribed (listeners: ${_pingerSubscriptions.length})',
+      name: 'pinger',
+    );
   }
 
   /// The [dispose] function once called will remove all the notifier
@@ -77,6 +91,10 @@ class Pinger<T> {
   /// after disposing the [Pinger] any ping to the [data] will not update
   /// any widgets or any subscription
   void dispose() {
+    developer.log(
+      'Pinger<$T> disposed (listeners cleared: ${_pingerSubscriptions.length})',
+      name: 'pinger',
+    );
     _disposed = true;
     _pingerSubscriptions.clear();
   }

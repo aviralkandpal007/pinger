@@ -1,47 +1,94 @@
+import 'dart:developer' as developer;
 import 'package:flutter/cupertino.dart';
 
-/// This the extensible class for a viewmodel or controller for a particular
-/// page or screen. With the help of [Pingora]  we will manage all the state
-/// of that particular class for which we have extended this viewmodel.
-/// So what this does, in simpler terms when a class extends [Pingora], it
-/// automatically enables a pinger within itself which helps the developer
-/// to ping various states for the user which helps the user to directly track
-/// and update the particular state for that widget which required UI updates
-/// according to the data changes.
+/// The base class for creating ViewModels / Controllers that can notify
+/// listeners about state changes.
+///
+/// Extend this class to create a stateful controller, then use [subscribe]
+/// to listen for updates, [ping] to notify all listeners, [unsubscribe] to
+/// remove a listener, and [dispose] to permanently shut down the controller.
+///
+/// ```dart
+/// class CounterModel extends Pingora {
+///   int count = 0;
+///
+///   void increment() {
+///     count++;
+///     ping(); // notify all subscribers
+///   }
+/// }
+/// ```
+///
+/// Once [dispose] is called, any further calls to [subscribe], [unsubscribe],
+/// or [ping] will throw an [AssertionError] to catch bugs early.
 class Pingora {
-  /// The [Pingora] is the base of the pingora class as this will ping required
-  /// subscribers about the data updates.
   final List<VoidCallback> _listeners = [];
 
   bool _disposed = false;
 
-  /// This will update the [Pingora] subscribers behind the scene and will update
-  /// each time the [Pingora] pings via the [Pingora]
-  void subscribe(VoidCallback listener){
-    debugPrint('subscribe $listener');
+  Pingora() {
+    developer.log(
+      'Pingora<$runtimeType> initialized',
+      name: 'pingora',
+    );
+  }
+
+  /// Registers a listener that will be called every time [ping] is invoked.
+  ///
+  /// Throws an [AssertionError] if the [Pingora] has already been disposed.
+  void subscribe(VoidCallback listener) {
+    assert(
+      !_disposed,
+      AssertionError('Can not subscribe to a disposed Pingora'),
+    );
     _listeners.add(listener);
+    developer.log(
+      'Pingora<$runtimeType> subscribed (listeners: ${_listeners.length})',
+      name: 'pingora',
+    );
   }
 
-  /// This will remove the [Pingora] subscriber so the updates can be canceled
-  void unsubscribe(VoidCallback listener){
-    debugPrint('unsubscribe $listener');
-    _listeners.remove(listener);
+  /// Removes a previously registered listener.
+  ///
+  /// Throws an [AssertionError] if the [Pingora] has already been disposed
+  /// or if the listener was never subscribed.
+  void unsubscribe(VoidCallback listener) {
+    assert(
+      !_disposed,
+      AssertionError('Can not unsubscribe from a disposed Pingora'),
+    );
+    final removed = _listeners.remove(listener);
+    assert(removed, 'Tried to remove a listener that was not subscribed');
+    developer.log(
+      'Pingora<$runtimeType> unsubscribed (listeners: ${_listeners.length})',
+      name: 'pingora',
+    );
   }
 
-  /// The method [ping] is basically taking a [Pingora] model as a model because
-  /// [Pingora] can hold any type of data in its model.
+  /// Notifies all currently subscribed listeners by calling each one.
+  ///
+  /// Throws an [AssertionError] if the [Pingora] has already been disposed.
   void ping() {
-    debugPrint('calling ping');
-    debugPrint('_listeners ${_listeners.length}');
+    assert(!_disposed, AssertionError('Can not ping on a disposed Pingora'));
+    developer.log(
+      'Pingora<$runtimeType> pinged (listeners: ${_listeners.length})',
+      name: 'pingora',
+    );
     for (var listener in _listeners) {
       listener.call();
     }
   }
 
-  /// The method [dispose] will remove all the listener in the pinger and will
-  /// close any further pingora activity
+  /// Permanently disables this [Pingora].
+  ///
+  /// Clears all listeners and sets the disposed flag so that any future
+  /// calls to [subscribe], [unsubscribe], or [ping] will throw an error.
   void dispose() {
-    _listeners.clear();
+    developer.log(
+      'Pingora<$runtimeType> disposed (listeners cleared: ${_listeners.length})',
+      name: 'pingora',
+    );
     _disposed = true;
+    _listeners.clear();
   }
 }

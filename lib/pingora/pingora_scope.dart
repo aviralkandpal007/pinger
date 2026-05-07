@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'pingora.dart';
 
+part 'pingora_extension.dart';
+
 /// Internal inherited widget used for exposing the [Pingora]
 /// instance down the widget tree while allowing widgets to
 /// access the controller using Flutter context extensions.
