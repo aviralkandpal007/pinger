@@ -20,7 +20,7 @@ Each pattern is independent. Use one or all three — they are designed to work 
 
 ```yaml
 dependencies:
-  pinger: ^0.0.4
+  pinger: 0.0.4
 ```
 
 ```sh
