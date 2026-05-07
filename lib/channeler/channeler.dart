@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 part 'channel.dart';
 
 /// The [Channeler] class acts as a centralized event communication manager

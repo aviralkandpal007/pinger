@@ -24,11 +24,3 @@ class Channel<T> {
   final String name;
 }
 
-///
-extension ChannelerExtension on BuildContext {
-
-  event(){
-
-  }
-
-}
