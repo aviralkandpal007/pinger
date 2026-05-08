@@ -17,8 +17,8 @@ extension ChannelerExtension on BuildContext {
   /// infrastructure using the current widget context. Channels must always
   /// be initialized before they can receive subscriptions or published
   /// events otherwise assertion errors will be triggered during execution.
-  void initChannel<T>(Channel<T> channel) {
-    channeler.initialize(channel);
+  void initChannel<T>(List<Channel<T>> channels) {
+    channeler.initialize(channels);
   }
 
   /// Registers a listener callback for the provided communication channel

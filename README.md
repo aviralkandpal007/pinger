@@ -242,10 +242,10 @@ class MyChannels {
 ### Initialize and subscribe
 
 ```dart
-final Channeler bus = Channeler();      // singleton
-
-bus.initialize(MyChannels.snackbar);
-bus.initialize(MyChannels.counter);
+main(){
+  Channeler.initialize([MyChannels.snackbar, 
+  MyChannels.counter]);
+}
 
 bus.subscribe(MyChannels.snackbar, (msg) {
   if (msg != null) showSnackBar(msg);

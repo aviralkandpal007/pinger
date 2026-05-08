@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 part 'channel.dart';
 
 /// The [Channeler] class acts as a centralized event communication manager
@@ -33,13 +35,14 @@ class Channeler {
   /// infrastructure. Channels must always be initialized before they can
   /// receive subscriptions or events, helping developers maintain safer
   /// communication flows and detect invalid channel usage during development.
-  void initialize<T>(Channel<T> channel) {
-    assert(
-      !_channels.containsKey(channel.name),
-      'Channel "${channel.name}" is already initialized.',
-    );
-
-    _channels[channel.name] = [];
+  void initialize<T>(List<Channel<T>> channels) {
+    for (final channel in channels) {
+      if (_channels.containsKey(channel.name)) {
+        log("${channel.name} Channel Already Initialized", name: 'Channeler');
+        continue;
+      }
+      _channels[channel.name] = [];
+    }
   }
 
   /// Registers a listener callback for the provided communication channel.

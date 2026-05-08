@@ -56,9 +56,6 @@ class _ChannelerExampleState extends State<ChannelerExample> {
   void initState() {
     super.initState();
 
-    // Step 1: Initialize channels before using them.
-    _channeler.initialize(AppChannels.notification);
-    _channeler.initialize(AppChannels.counter);
 
     // Step 2: Subscribe to channels.
     // These listeners are completely decoupled from the senders.

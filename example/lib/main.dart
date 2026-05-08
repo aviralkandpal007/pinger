@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pinger/channeler/channeler.dart';
 import 'package:pinger/pingora.dart';
 import 'pinger_example/pinger_example.dart';
 import 'pingora_example/pingora_example.dart';
@@ -6,6 +7,8 @@ import 'channeler_example/channeler_example.dart';
 import 'pingora_example/pingora_model_example.dart';
 
 void main() {
+  // initialize channeler at the starting once
+  Channeler().initialize([AppChannels.notification,AppChannels.counter]);
   runApp(const PingerExampleApp());
 }
 
