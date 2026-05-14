@@ -12,7 +12,9 @@ topics:
   - state-management
   - lightweight
   - fast
-  - disposable
+  - state
+  - channels
+  - communication
   - performance
 
 dependencies:
